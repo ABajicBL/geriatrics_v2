@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_patient_user,access_medical_patient_User,model_medical_patient,base.group_user,1,1,1,0
+access_patient_manager,access_medical_patient_Manager,model_medical_patient,base.group_system,1,1,1,1
+access_patient_contract_user,access_medical_patient_contract_User,model_medical_patient_contract,base.group_user,1,1,1,0
+access_patient_contract_manager,access_medical_patient_contract_Manager,model_medical_patient_contract,base.group_system,1,1,1,1

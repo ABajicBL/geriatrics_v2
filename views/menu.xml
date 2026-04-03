@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_geriatrics" name="Geriatrics" />
+
+    <record id="action_geriatrics_patient" model="ir.actions.act_window">
+        <field name="name">Geriatrics Patient</field>
+        <field name="res_model">medical.patient</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_geriatrics_patient" name="Patients" parent="menu_geriatrics" action="action_geriatrics_patient"/>
+
+</odoo>

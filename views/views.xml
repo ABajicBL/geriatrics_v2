@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<odoo>
+    <data>
+
+        <record id="medical_patient_view" model="ir.ui.view">
+            <field name="name">Patient.form</field>
+            <field name="model">medical.patient</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Patient">
+                    <sheet>
+                        <div class="o_geriatrics_patient_header">
+                            <field name="photo" nolabel="1" widget="image" class="oe_avatar oe_avatar_left" string="Photo"/>
+                            <div class="oe_title">
+                                <h1>
+                                    <field name="partner_id" string="Ime" placeholder="Patient Name"/>
+                                </h1>
+                            </div>
+                        </div>
+                        <group>
+                            <field name="sex" string="Pol"/>
+                            <field name="patient_id" string="ID"/>
+                        </group>
+                    </sheet>
+                </form>
+
+            </field>
+        </record>
+
+
+
+
+
+        <record id="medical_partner_view_inherit" model="ir.ui.view">
+            <field name="name">Partner_patient.form</field>
+            <field name="model">res.partner</field>
+            <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="arch" type="xml">
+            <!--
+                <xpath expr="//div[@name='buttons']" position="replace">
+           
+                </xpath>
+                     -->
+            <xpath expr="//field[@name='category_id']" position="after">
+                <field name="is_Patient" widget="boolean_toggle"/>
+                <field name="contract_ids" invisible="0"/>
+                </xpath>
+            </field>
+        </record>
+
+
+
+    </data>
+</odoo>

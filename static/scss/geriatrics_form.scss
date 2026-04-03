@@ -1,0 +1,17 @@
+.o_geriatrics_patient_header {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 1.5rem;
+
+    .oe_title {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+}
+
+.oe_avatar.oe_avatar_left {
+    float: left;
+    margin-right: 0;
+    margin-bottom: 0;
+}

@@ -1,0 +1,28 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments & local env
+.venv/
+venv/
+.env
+.env.*
+
+# Packaging / tooling
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Editors & OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+
+# Odoo / i18n (if you add translations later)
+# *.mo
