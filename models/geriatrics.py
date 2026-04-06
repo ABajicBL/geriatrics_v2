@@ -34,7 +34,22 @@ class patient(models.Model):
         oldname='name',
     )
     sex = fields.Selection([('m', 'Male'), ('f', 'Female')], string='Sex', required=True)
-    patient_id = fields.Char('ID', size=64, required=True)
+    
+    
+    # patient_id: official patient identifier, generated from ir.sequence (code: medical.patient.id),
+    # e.g. prefix "P" plus the padded number defined on the sequence.
+    # ir.sequence is a simple way to reduce duplicate IDs under concurrency; it is not the only or always the best approach (e.g. unique SQL constraints, UUIDs).
+    # The default appears when opening a new form; each new form consumes the next number
+    # (closing without saving leaves gaps in the sequence).
+    def _default_patient_id(self):
+        return self.env['ir.sequence'].next_by_code('medical.patient.id')
+    
+        
+    patient_id = fields.Char('ID', size=64, required=True, default=_default_patient_id)
+    
+    
     #photo = fields.Binary('Picture')
     photo = fields.Image(string='Photo')
     
+ 
+
