@@ -21,6 +21,12 @@
                         <group>
                             <field name="sex" string="Pol"/>
                             <field name="patient_id" string="ID"/>
+                            <field name="dob"/>
+                            <field name="age" readonly="1" class="o_geriatrics_age"/>
+                            <!--
+                            <field name="deceased"/>
+                            <field name="dod" invisible="not deceased"/>
+                            -->
                         </group>
                     </sheet>
                 </form>

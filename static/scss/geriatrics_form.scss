@@ -1,3 +1,9 @@
+// Readonly rows use a lighter label; match normal field labels for computed age.
+.o_form_view .o_wrap_field:has(.o_geriatrics_age) .o_form_label {
+    font-weight: 700;
+    opacity: 1;
+}
+
 .o_geriatrics_patient_header {
     display: flex;
     align-items: flex-start;

@@ -1,5 +1,15 @@
 from odoo import models, fields, api
 
+
+def _give_last_birthday(dob, year):
+    try:
+        return dob.replace(year=year)
+    except ValueError:
+        # Only fails for 29 Feb when `year` is not a leap year; use 28 Feb.
+        return dob.replace(year=year, day=dob.day - 1)
+
+
+
 class res_partners(models.Model):
     _inherit = 'res.partner'
 
@@ -51,5 +61,43 @@ class patient(models.Model):
     #photo = fields.Binary('Picture')
     photo = fields.Image(string='Photo')
     
- 
+    # date of birth
+    dob = fields.Date(string ='Datum rođenja', required=True)
 
+    # deceased
+    deceased = fields.Boolean(string='Preminuo', default=False)
+
+    # death date
+    dod = fields.Date(string='Datum smrti')
+
+    age = fields.Char(string='Starost', compute='_compute_age')
+
+
+    @api.depends('dob', 'dod', 'deceased')
+    def _compute_age(self):
+        today = fields.Date.today()
+        for record in self:
+            if not record.dob:
+                record.age = False
+                continue
+            if record.deceased:
+                if not record.dod:
+                    record.age = False
+                    continue
+                end = record.dod
+                suffix = ' (preminuo)'
+            else:
+                end = today
+                suffix = ''
+            start = record.dob
+            if end < start:
+                record.age = False
+                continue
+
+            last_birthday = _give_last_birthday(start, end.year)
+            if last_birthday > end:
+                last_birthday = _give_last_birthday(start, end.year - 1)
+
+            years = last_birthday.year - start.year
+            days = (end - last_birthday).days
+            record.age = f"{years} years {days} days{suffix}"
