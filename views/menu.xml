@@ -6,6 +6,29 @@
         <field name="name">Geriatrics Patient</field>
         <field name="res_model">medical.patient</field>
         <field name="view_mode">list,form</field>
+        <!--
+            The action context is extended here so the client can open existing patients in a
+            readonly (view-first) form while new records stay editable.
+
+            open_form_readonly (action context)
+
+            Whatever you put in ir.actions.act_window "context" is evaluated and merged into the
+            browsing context for that action. The Odoo web client passes that merged dict down to
+            ListController and FormController as props.context (together with user/session context).
+
+            geriatrics_act_window_readonly.js patches FormController.modelParams. It does not hardcode
+            action XML-IDs: it checks props.context.open_form_readonly and, when resId is set (existing
+            record), sets the relational model config.mode to "readonly". New records have no resId, so
+            Create stays editable. We do not rely on list switchView passing props.readonly: in Odoo 19
+            that keeps fields readonly even after switching to edition; view-first mode must use model
+            mode only (see comments in that JS file).
+
+            models/ir_actions.py whitelists "flags" for /web/action/load and, for this action only,
+            sets result["flags"] = {"initial_mode": "view"}. The JS patch above does not read flags; it
+            uses this context key. The explicit Edit bar is geriatrics_patient_form_controller.js and
+            geriatrics_patient_form.xml (js_class on the patient form in views.xml).
+        -->
+        <field name="context">{'open_form_readonly': True}</field>
     </record>
 
     <menuitem id="menu_geriatrics_patient" name="Patients" parent="menu_geriatrics" action="action_geriatrics_patient"/>

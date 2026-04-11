@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <odoo>
     <data>
 
@@ -8,7 +7,7 @@
             <field name="model">medical.patient</field>
             <field name="type">form</field>
             <field name="arch" type="xml">
-                <form string="Patient">
+                <form string="Patient" js_class="geriatrics_patient_form">
                     <sheet>
                         <div class="o_geriatrics_patient_header">
                             <field name="photo" nolabel="1" widget="image" class="oe_avatar oe_avatar_left" string="Photo"/>
@@ -30,32 +29,57 @@
                         </group>
                     </sheet>
                 </form>
-
             </field>
         </record>
 
+        <!--
+            Readonly form when opening existing patients (list row or form-first), while keeping "Create" in edit mode.
 
+            Problem
+            For writable users the web client opens mono-record forms in edit mode by default. Attributes such as
+            form edit="0" would lock the whole view and break new-record creation. Older approaches relied on
+            ir.actions.act_window flags (e.g. initial_mode) reaching the browser; in Odoo 19, action_service does not
+            map those onto FormController props.readonly, so backend-only patches are not enough for list to form.
 
+            Solution (cross-referenced)
+            .............................
+            - views/menu.xml: action context {'open_form_readonly': True} — merged into props.context on list/form;
+              JS patches read this (see long comment in menu.xml).
+            - models/ir_actions.py: _get_readable_fields / _get_action_dict add optional flags on the action dict.
+            - static/src/js/geriatrics_act_window_readonly.js: FormController.modelParams sets relational model
+              mode readonly when context flag and resId are set (not props.readonly, so edition still works).
+            - Form js_class geriatrics_patient_form: explicit Edit bar (static/src/xml + geriatrics_patient_form_controller.js).
+        -->
 
+        <record id="medical_patient_list_view" model="ir.ui.view">
+            <field name="name">Patient.list</field>
+            <field name="model">medical.patient</field>
+            <field name="type">list</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="partner_id" string="Ime"/>
+                    <field name="sex" string="Pol"/>
+                    <field name="patient_id" string="ID"/>
+                </list>
+            </field>
+        </record>
 
         <record id="medical_partner_view_inherit" model="ir.ui.view">
             <field name="name">Partner_patient.form</field>
             <field name="model">res.partner</field>
             <field name="inherit_id" ref="base.view_partner_form"/>
             <field name="arch" type="xml">
-            <!--
+                <!--
                 <xpath expr="//div[@name='buttons']" position="replace">
            
                 </xpath>
-                     -->
-            <xpath expr="//field[@name='category_id']" position="after">
-                <field name="is_Patient" widget="boolean_toggle"/>
-                <field name="contract_ids" invisible="0"/>
+                -->
+                <xpath expr="//field[@name='category_id']" position="after">
+                    <field name="is_Patient" widget="boolean_toggle"/>
+                    <field name="contract_ids" invisible="False"/>
                 </xpath>
             </field>
         </record>
-
-
 
     </data>
 </odoo>
