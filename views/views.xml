@@ -20,8 +20,11 @@
                         <group>
                             <field name="sex" string="Pol"/>
                             <field name="patient_id" string="ID"/>
+                            <field name="jmbg"/>
                             <field name="dob"/>
                             <field name="age" readonly="1" class="o_geriatrics_age"/>
+                            <field name="id_document"/>
+                            <field name="id_document_expiration"/>
                             <!--
                             <field name="deceased"/>
                             <field name="dod" invisible="not deceased"/>

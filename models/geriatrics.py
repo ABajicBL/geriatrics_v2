@@ -61,8 +61,42 @@ class patient(models.Model):
     #photo = fields.Binary('Picture')
     photo = fields.Image(string='Photo')
     
-    # date of birth
-    dob = fields.Date(string ='Datum rođenja', required=True)
+    # citizen ID number 
+    jmbg = fields.Char(string = "JMBG")
+
+    # state ID document
+    id_document = fields.Char(string = "Broj licne karte")
+
+    # state ID expiration 
+    id_document_expiration = fields.Date(string = "Datum isteka LK")
+
+    # is state ID document due soon
+    id_document_due_soon = fields.Boolean(string="Istek LK")
+
+    # date of birth (fill_dob sets from JMBG when length is 13; invalid data is ignored)
+    dob = fields.Date(string="Datum rođenja", required=True)
+
+    @api.onchange("jmbg")
+    def fill_dob(self):
+        """Soft validation: only require 13 characters; build YYYY-MM-DD from list positions (DD MM YYY)."""
+        if not self.jmbg or len(self.jmbg) != 13:
+            return
+        chars = list(self.jmbg)
+        try:
+            yyy = int(chars[4] + chars[5] + chars[6])
+            year = 1000 + yyy if yyy >= 900 else 2000 + yyy
+            jmbg_date = (
+                str(year)
+                + "-"
+                + chars[2]
+                + chars[3]
+                + "-"
+                + chars[0]
+                + chars[1]
+            )
+            self.dob = jmbg_date
+        except ValueError:
+            return
 
     # deceased
     deceased = fields.Boolean(string='Preminuo', default=False)
