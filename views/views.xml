@@ -8,7 +8,7 @@
             <field name="type">form</field>
             <field name="arch" type="xml">
                 <form string="Patient" js_class="geriatrics_patient_form">
-                    <sheet>
+                    <sheet class="o_geriatrics_patient_sheet">
                         <div class="o_geriatrics_patient_header">
                             <field name="photo" nolabel="1" widget="image" class="oe_avatar oe_avatar_left" string="Photo"/>
                             <div class="oe_title">
@@ -18,18 +18,34 @@
                             </div>
                         </div>
                         <group>
-                            <field name="sex" string="Pol"/>
-                            <field name="patient_id" string="ID"/>
-                            <field name="jmbg"/>
-                            <field name="dob"/>
-                            <field name="age" readonly="1" class="o_geriatrics_age"/>
-                            <field name="id_document"/>
-                            <field name="id_document_expiration"/>
-                            <!--
-                            <field name="deceased"/>
-                            <field name="dod" invisible="not deceased"/>
-                            -->
+                            <group>
+                                <field name="patient_id" string="ID"/>
+                                <field name="jmbg"/>
+                                <field name="dob"/>
+                                <field name="id_document"/>
+                                <field name="id_document_expiration"/>
+
+                            </group>
+                            <group>
+                                <field name="deceased"/>
+                                <field name="dod" invisible="not deceased"/>
+                                <field name="sex"/>
+                                <field name="age" readonly="1" class="o_geriatrics_age"/>
+                                <field name="martial_status"/>
+                                <!--
+
+                                -->
+                            </group>
                         </group>
+
+                        <group class="o_geriatrics_patient_family_group">
+                            <field name="maiden_name" readonly="sex == 'm'"/>
+                            <field name = "father_name"/>
+                            <field name = "mother_name" />
+                            <field name = "mother_surname" />
+                            <field name = "husband_name" />    
+                        </group>
+
                     </sheet>
                 </form>
             </field>

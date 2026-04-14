@@ -4,6 +4,22 @@
     opacity: 1;
 }
 
+// Same label-column width in every group so stacked fields line up (first block vs family group).
+// Odoo sizes labels per group otherwise; this scopes a fixed basis to this sheet only.
+.o_geriatrics_patient_sheet {
+    .o_wrap_label {
+        // flex: grow shrink basis — no grow (0), no shrink (0), fixed starting width 13rem so labels stay one column width.
+        flex: 0 0 11rem;
+        min-width: 11rem;
+        max-width: 16rem;
+    }
+}
+
+// Extra separation between the main patient block (two inner groups) and family names.
+.o_geriatrics_patient_family_group {
+    margin-top: 2rem;
+}
+
 .o_geriatrics_patient_header {
     display: flex;
     align-items: flex-start;

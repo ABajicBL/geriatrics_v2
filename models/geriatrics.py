@@ -43,7 +43,7 @@ class patient(models.Model):
         domain=[('is_Patient', '=', True)],
         oldname='name',
     )
-    sex = fields.Selection([('m', 'Male'), ('f', 'Female')], string='Sex', required=True)
+    sex = fields.Selection([('m', 'Muški'), ('f', 'Ženski')], string='Pol', required=True)
     
     
     # patient_id: official patient identifier, generated from ir.sequence (code: medical.patient.id),
@@ -65,7 +65,7 @@ class patient(models.Model):
     jmbg = fields.Char(string = "JMBG")
 
     # state ID document
-    id_document = fields.Char(string = "Broj licne karte")
+    id_document = fields.Char(string = "Broj lične karte")
 
     # state ID expiration 
     id_document_expiration = fields.Date(string = "Datum isteka LK")
@@ -135,3 +135,29 @@ class patient(models.Model):
             years = last_birthday.year - start.year
             days = (end - last_birthday).days
             record.age = f"{years} years {days} days{suffix}"
+
+    
+    martial_status = fields.Selection([
+        ('msingle', 'Neoženjen'),
+        ('fsingle', 'Neudata'),
+        ('mmarried', "Oženjen"),
+        ('fmarried', "Udata"),
+        ('mwidowed', "Udovac"),
+        ('fwidowed', "Udovica"),
+        ('mdivorced', 'Razveden'),
+        ('fdivorced', 'Razvedena'),
+        ('separated', 'Razdvojeni'),
+        ('unknown', 'Nepoznato')
+    ], string="Bračno stanje")
+
+    @api.onchange("sex")
+    def _onchange_sex_clear_maiden_name(self):
+        if self.sex == "m":
+            self.maiden_name = False
+
+    maiden_name = fields.Char(string='Djevojačko prezime')
+    father_name = fields.Char(string='Ime oca')
+    mother_name = fields.Char(string='Ime majke')
+    mother_surname = fields.Char(string='Djev. prez. majke')
+    husband_name = fields.Char(string='Ime muža\žene')
+
