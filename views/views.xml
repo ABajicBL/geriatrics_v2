@@ -32,6 +32,9 @@
                                 <field name="sex"/>
                                 <field name="age" readonly="1" class="o_geriatrics_age"/>
                                 <field name="martial_status"/>
+                                <field name="city" />
+                                <field name="street" />
+                                <field name="zip" />                                
                                 <!--
 
                                 -->
@@ -83,20 +86,107 @@
             </field>
         </record>
 
+        <!--
+            medical_partner_view_inherit: shared res.partner form (not a separate form)
+
+            inherit_id ref="base.view_partner_form" means this record only patches the standard partner
+            form. It does not define a second, private form. View inheritance merges all extensions into
+            one combined architecture for every screen that uses that base view (Contacts, embedded
+            partner editors, and so on).
+
+            Interaction with other modules
+            ..................................
+            Any module that also inherits base.view_partner_form (for example mail, account, sale,
+            website) contributes xpaths to the same tree. Merge order is by view priority, then by
+            view id. This record uses priority 50 so it usually runs after typical core inherits (for
+            example mail on partner). Installing or upgrading another app later can change the merged
+            XML so an xpath here matches no node (upgrade error: element cannot be located) or more
+            than one node. After such changes, upgrade geriatrics_v2 and retest the partner form.
+
+            Customizations applied here
+            ..................................
+            - Remove Tax ID: field vat.
+            - Remove Tags: field category_id is replaced by is_Patient and contract_ids (see below).
+            - Job position and Website: fields function and website are readonly for everyone.
+            - When is_Patient is true (patient partners): email and phone are readonly; company_type,
+              parent_id, and the company_name quick-create row are invisible.
+            - Deferred: nurse and insurance company toggles and related Python fields are commented out
+              in models/geriatrics.py until patient flows are finished; only is_Patient is exposed on
+              the form for now.
+        -->
         <record id="medical_partner_view_inherit" model="ir.ui.view">
             <field name="name">Partner_patient.form</field>
             <field name="model">res.partner</field>
             <field name="inherit_id" ref="base.view_partner_form"/>
+            <field name="priority" eval="50"/>
             <field name="arch" type="xml">
                 <!--
-                <xpath expr="//div[@name='buttons']" position="replace">
-           
-                </xpath>
+                    Email (and phone below): why this xpath is long
+                    ................................................
+                    We only set readonly on the main header email, not on every field[@name='email'] in
+                    the merged arch. The partner form also embeds email on child contact forms and in
+                    kanban templates; a short //field[@name='email'] often matches several nodes and
+                    breaks the view, or readonly would apply in the wrong place.
+                    So we narrow to the header row: a flex div that contains that field. Stock Odoo 19
+                    uses classes d-flex, align-items-baseline, and w-md-50 on that row. 
+                    
+                        <div class="d-flex align-items-baseline w-md-50">
+                            <i class="fa fa-fw me-1 fa-envelope text-primary" title="Email"/>
+                            <field name="email" class="w-100" widget="email" required="user_ids" placeholder="Email"/>
+                        </div>
+                
+                    The mail app, if installed, replaces that block so the field moves under o_row_readonly 
+                    instead: same field, different wrapper. 
+                    Only one of those layouts exists after merge. A single short xpath
+                    would then match nothing when mail is installed, or nothing without mail. The
+                    union (|) joins two locators; exactly one should match, so the module loads in both
+                    cases and only the intended field gets readonly.
                 -->
-                <xpath expr="//field[@name='category_id']" position="after">
-                    <field name="is_Patient" widget="boolean_toggle"/>
-                    <field name="contract_ids" invisible="False"/>
+                <xpath expr="//div[contains(@class,'d-flex')][contains(@class,'align-items-baseline')][contains(@class,'w-md-50')][.//field[@name='email']]//field[@name='email'] | //div[contains(@class,'o_row_readonly')][.//field[@name='email']]//field[@name='email']" position="attributes">
+                    <attribute name="readonly">is_Patient</attribute>
                 </xpath>
+                <!-- Phone: same pattern as email (base w-md-50 row vs mail o_row_readonly). -->
+                <xpath expr="//div[contains(@class,'d-flex')][contains(@class,'align-items-baseline')][contains(@class,'w-md-50')][.//field[@name='phone']]//field[@name='phone'] | //div[contains(@class,'o_row_readonly')][.//field[@name='phone']]//field[@name='phone']" position="attributes">
+                    <attribute name="readonly">is_Patient</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='company_type']" position="attributes">
+                    <attribute name="invisible">is_Patient</attribute>
+                </xpath>
+                <xpath expr="//field[@name='parent_id'][@widget='res_partner_many2one']" position="attributes">
+                    <attribute name="invisible">is_Patient</attribute>
+                </xpath>
+                <xpath expr="//div[@colspan='2'][contains(@class,'d-flex')][contains(@class,'gap-2')][.//field[@name='company_name']]" position="attributes">
+                    <attribute name="invisible">is_Patient</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='vat']" position="replace"/>
+                <xpath expr="//field[@name='function']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+                <xpath expr="//field[@name='website'][@widget='url']" position="attributes">
+                    <attribute name="readonly">1</attribute>
+                </xpath>
+
+                <!-- Tags (category_id) removed; patient toggle (+ contracts) replace that slot. -->
+                <xpath expr="//field[@name='category_id']" position="replace">
+
+                </xpath>
+
+                <xpath expr="//group" position="after">
+                <group>
+                    <field name="is_Patient" widget="boolean_toggle"/>
+                    <field name="contract_ids" invisible="not is_Patient"/>
+                </group>
+                </xpath>
+
+                <xpath expr="//page[@name='sales_purchases']" position="attributes">
+                    <attribute name="invisible">is_Patient</attribute>
+                </xpath>
+                <xpath expr="//page[@name='contact_addresses']" position="attributes" >
+                    <attribute name="invisible">is_Patient</attribute>
+                </xpath>
+
             </field>
         </record>
 

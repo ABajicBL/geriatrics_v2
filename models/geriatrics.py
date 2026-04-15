@@ -16,6 +16,28 @@ class res_partners(models.Model):
     is_Patient = fields.Boolean(string='Is Patient', default=True)
     contract_ids = fields.One2many(comodel_name='medical.patient.contract', inverse_name='partner_id', string='Contracts')
 
+    # Deferred (nurse / insurance company): finish patient flow first, then uncomment and extend views.
+    # is_nurse = fields.Boolean(string='Is Nurse', default=False)
+    # is_insurance_company = fields.Boolean(string='Is Insurance Company', default=False)
+    #
+    # @api.onchange('is_Patient')
+    # def _onchange_is_patient_role(self):
+    #     if self.is_Patient:
+    #         self.is_nurse = False
+    #         self.is_insurance_company = False
+    #
+    # @api.onchange('is_nurse')
+    # def _onchange_is_nurse_role(self):
+    #     if self.is_nurse:
+    #         self.is_Patient = False
+    #         self.is_insurance_company = False
+    #
+    # @api.onchange('is_insurance_company')
+    # def _onchange_is_insurance_role(self):
+    #     if self.is_insurance_company:
+    #         self.is_Patient = False
+    #         self.is_nurse = False
+
 
 
 class patient_contract(models.Model):
@@ -159,5 +181,10 @@ class patient(models.Model):
     father_name = fields.Char(string='Ime oca')
     mother_name = fields.Char(string='Ime majke')
     mother_surname = fields.Char(string='Djev. prez. majke')
-    husband_name = fields.Char(string='Ime muža\žene')
+    husband_name = fields.Char(string='Ime muža / žene')
 
+    # address from res_partners
+    # with related it is a proxy to the partner’s address
+    city = fields.Char(related="partner_id.city", store=False, readonly=False, string="Grad")
+    street = fields.Char(related="partner_id.street", store=False, readonly=False, string="Ulica")
+    zip = fields.Char(related="partner_id.zip", store=False, readonly=False, string="Poš. broj")
