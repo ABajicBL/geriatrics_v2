@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-
+        <!--- PATIENTS  -->
         <record id="medical_patient_view" model="ir.ui.view">
             <field name="name">Patient.form</field>
             <field name="model">medical.patient</field>
@@ -86,6 +86,58 @@
             </field>
         </record>
 
+        <!--- CONTRACTS  -->
+        <record id="medical_patient_contract_view_list" model="ir.ui.view">
+            <field name="name">medical.patient.contract.list</field>
+            <field name="model">medical.patient.contract</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="contract_ref"/>
+                    <field name="patient"/>
+                    <field name="contract_type"/>
+                    <field name="status"/>
+                    <field name="start_date"/>
+                    <field name="end_date"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="medical_patient_contract_view_form" model="ir.ui.view">
+            <field name="name">medical.patient.contract.form</field>
+            <field name="model">medical.patient.contract</field>
+            <field name="arch" type="xml">
+                <form string="Ugovor">
+                    <header>
+                        <button name="action_activate_contract" type="object" string="Aktivacija" class="btn-primary" invisible="status != 'draft'"/>
+                        <button name="action_terminate_contract" type="object" string="Raskid" invisible="status != 'open'"/>
+                        <field name="status" widget="statusbar" statusbar_visible="draft,open,closed"/>
+                    </header>
+                    <sheet>
+                        <!-- requested_by / contractor: quick-create defaults clear pacijent & institucija flags;
+                             signatory booleans on res.partner still come only from saved contract links. -->
+                        <group>
+                            <group>
+                                <field name="contract_ref"/>
+                                <field name="contract_type"/>
+                                <field name="patient"/>
+                                <field name="requested_by" context="{'default_is_patient': False, 'default_is_institution': False}"/>
+                                <field name="contractor" context="{'default_is_patient': False, 'default_is_institution': False}"/>
+                            </group>
+                            <group>
+                                <field name="start_date"/>
+                                <field name="end_date"/>
+                                <field name="create_uid" readonly="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="notes" placeholder="Napomene..."/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!--- RES PARTNER form  -->
         <!--
             medical_partner_view_inherit: shared res.partner form (not a separate form)
 

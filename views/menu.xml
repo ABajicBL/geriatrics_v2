@@ -1,5 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!--
+        Left / persistent sidebar (Odoo 19 Community)
+        ...............................................
+        ir.ui.menu only declares entries; it cannot turn on a fixed desktop left rail. The CE 19
+        backend shell uses web.NavBar: apps as a top dropdown, current-app sections as horizontal
+        dropdowns (addons/web/static/src/webclient/navbar/navbar.xml + navbar.js). Small screens use
+        a slide-over burger panel (o_app_menu_sidebar), toggled by state — not always open.
+
+        To implement a true always-visible left menu you need a custom web layer, for example:
+        - Register assets on web.assets_backend (SCSS + JS/XML patches).
+        - Patch or replace NavBar / ActionContainer layout so section links render in a vertical
+          column, or portal the menu into a fixed aside; adjust z-index, width, and overflow.
+        - Expect to revisit selectors and OWL structure after Odoo upgrades.
+
+        Until then, keep menu items flat under the app root (see comment on Contracts below) so they
+        appear in the standard top navigation without an extra collapsible folder.
+    -->
     <menuitem id="menu_geriatrics" name="Geriatrics" />
 
     <record id="action_geriatrics_patient" model="ir.actions.act_window">
@@ -31,6 +48,22 @@
         <field name="context">{'open_form_readonly': True}</field>
     </record>
 
-    <menuitem id="menu_geriatrics_patient" name="Patients" parent="menu_geriatrics" action="action_geriatrics_patient"/>
+    <menuitem id="menu_geriatrics_patient" name="Patients" parent="menu_geriatrics" action="action_geriatrics_patient" sequence="10"/>
 
+    <!--
+        CONTRACT menu
+        It is not possible to put as side menu under Administration group
+        For example "Administration" with no action: Odoo v19 shows those as collapsible groups, 
+        so entries stay hidden until expanded. 
+        Better leave window actions directly under the app menu (top line from left to right)
+    -->
+    <record id="action_geriatrics_contracts" model="ir.actions.act_window">
+        <field name="name">Contracts</field>
+        <field name="res_model">medical.patient.contract</field>
+        <field name="view_mode">list,form</field>
+
+    </record>
+
+    <menuitem id="menu_geriatrics_contracts" name="Contracts" parent="menu_geriatrics" action="action_geriatrics_contracts" sequence="20"/>
+    
 </odoo>

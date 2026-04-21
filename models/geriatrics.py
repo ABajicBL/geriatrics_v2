@@ -14,7 +14,7 @@ class res_partners(models.Model):
     _inherit = 'res.partner'
 
     is_Patient = fields.Boolean(string='Is Patient', default=True)
-    contract_ids = fields.One2many(comodel_name='medical.patient.contract', inverse_name='partner_id', string='Contracts')
+    contract_ids = fields.One2many(comodel_name='medical.patient.contract', inverse_name='patient_partner_id', string='Contracts')
 
     # Deferred (nurse / insurance company): finish patient flow first, then uncomment and extend views.
     # is_nurse = fields.Boolean(string='Is Nurse', default=False)
@@ -40,12 +40,78 @@ class res_partners(models.Model):
 
 
 
+
 class patient_contract(models.Model):
     _name = 'medical.patient.contract'
+    _description = 'Patient contract'
 
-    ref = fields.Char('Contract Reference', required=True)
-    partner_id = fields.Many2one(comodel_name='res.partner', string='Patient', required=True)
-    start_date = fields.Date('Start Date', required=True, default=fields.Date.today())
+    # use contract_ref as display name
+    _rec_name = 'contract_ref'
+    
+    contract_ref = fields.Char(string='Oznaka ili broj ugovora', required=True)
+    contract_type = fields.Selection([('dependent', 'Zavisan'), ('independent', 'Nezavisan')], string="Tip")
+
+    patient = fields.Many2one(comodel_name='medical.patient', string='Korisnik ugovora', required=True)
+    patient_partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Kontakt korisnika',
+        related='patient.partner_id',
+        store=True,
+        index=True,
+    )
+    requested_by = fields.Many2one(comodel_name='res.partner', string='Podnosilac zahtjev')
+    contractor = fields.Many2one(comodel_name='res.partner', string='Potpisnik ugovora', required=True)
+    start_date = fields.Date(string='Početak ugovora', required=True, default=fields.Date.today())
+    end_date = fields.Date(string='Kraj ugovor')
+    status = fields.Selection([('draft','U pripremi'),('open', 'Aktivan'),('closed','Završen')], string='Status', default='draft')
+    notes = fields.Text(string='Napomene')
+    create_uid = fields.Many2one(comodel_name='res.users', string='Kreirao')
+
+    def action_activate_contract(self):
+        self.filtered(lambda c: c.status == 'draft').write({'status': 'open'})
+        return True
+
+    def action_terminate_contract(self):
+        today = fields.Date.today()
+        # self can contain several contract, so first filter open one
+        self.filtered(lambda c: c.status == 'open').write({'status': 'closed', 'end_date': today})
+        return True
+
+    @api.constrains('patient', 'status')
+    def _check_one_open_contract_per_patient(self):
+        for contract in self:
+            if contract.status != 'open':
+                continue
+            dup = self.search_count(
+                [
+                    ('id', '!=', contract.id),
+                    ('patient', '=', contract.patient.id),
+                    ('status', '=', 'open'),
+                ]
+            )
+            if dup:
+                raise ValidationError(
+                    _('Već postoji aktivan ugovor za ovog korisnika (medicinski pacijent).')
+                )
+
+    @api.constrains('contractor', 'status')
+    def _check_one_open_contract_per_contractor(self):
+        for contract in self:
+            if contract.status != 'open' or not contract.contractor:
+                continue
+            dup = self.search_count(
+                [
+                    ('id', '!=', contract.id),
+                    ('contractor', '=', contract.contractor.id),
+                    ('status', '=', 'open'),
+                ]
+            )
+            if dup:
+                raise ValidationError(
+                    _('Već postoji aktivan ugovor gdje je ovaj kontakt potpisnik.')
+                )
+
+
 
 
 class patient(models.Model):
