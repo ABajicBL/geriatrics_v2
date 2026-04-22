@@ -94,10 +94,14 @@
                 <list>
                     <field name="contract_ref"/>
                     <field name="patient"/>
-                    <field name="contract_type"/>
+                    <field name="contract_type" optional="show"/>
+                    <field name="requested_by" optional="show"/>
+                    <field name="contractor" optional="show"/>
                     <field name="status"/>
+
                     <field name="start_date"/>
                     <field name="end_date"/>
+                    <field name="create_date" optional="show"/>
                 </list>
             </field>
         </record>
@@ -127,6 +131,7 @@
                                 <field name="start_date"/>
                                 <field name="end_date"/>
                                 <field name="create_uid" readonly="1"/>
+                                <field name="create_date" readonly="1"/>
                             </group>
                         </group>
                         <group>
@@ -139,7 +144,7 @@
 
         <!--- RES PARTNER form  -->
         <!--
-            medical_partner_view_inherit: shared res.partner form (not a separate form)
+            medical_partner_view_inherit — geriatrics res.partner (patient, institution, contract roles).
 
             inherit_id ref="base.view_partner_form" means this record only patches the standard partner
             form. It does not define a second, private form. View inheritance merges all extensions into
@@ -155,16 +160,30 @@
             XML so an xpath here matches no node (upgrade error: element cannot be located) or more
             than one node. After such changes, upgrade geriatrics_v2 and retest the partner form.
 
-            Customizations applied here
+            is_geriatrics (computed on the model, not stored) is true when is_patient or is_institution,
+            or when the partner is linked on a contract as patient contact, requestor, or contractor.
+            It is recomputed when the record is read (e.g. opening the form). VAT, category_id (tags),
+            street2, and state_id use invisible="is_geriatrics" (main address xpath and div_address fallback);
+            when false, stock Odoo behaviour applies.
+
+            Applied in this arch
             ..................................
-            - Remove Tax ID: field vat.
-            - Remove Tags: field category_id is replaced by is_Patient and contract_ids (see below).
-            - Job position and Website: fields function and website are readonly for everyone.
-            - When is_Patient is true (patient partners): email and phone are readonly; company_type,
-              parent_id, and the company_name quick-create row are invisible.
-            - Deferred: nurse and insurance company toggles and related Python fields are commented out
-              in models/geriatrics.py until patient flows are finished; only is_Patient is exposed on
-              the form for now.
+            - Gerijatrija block: is_patient, is_institution (mutually exclusive in Python);
+              it is added as a group with colspan="2", spans both columns of the left inner group so 
+              toggles are not beside the address grid row; 
+              inner col="4" keeps Pacijent/Institucija labels + boolean_toggle on one row.
+            - Address: separator string="Adresa" colspan="2" before address_name; stock span address_name
+              is invisible="1" (redundant with Adresa). Span kept in arch for following-sibling xpaths.
+              o_address_format gets colspan="2" so fields span the row after the label cell is hidden.
+            - Email / phone: readonly if is_patient; institution can edit them.
+            - Website: readonly if is_patient only (institution can edit website).
+            - company_type, parent_id (Company), company name row: invisible if is_patient, is_institution,
+              is_contractor, or is_requestor (latter two come from saved medical.patient.contract links).
+            - function: readonly for everyone.
+            - Ugovori: group visible if is_geriatrics; patient vs signatory lists use flags / contract data.
+            - Pages sales_purchases and contact_addresses: invisible if is_patient or is_institution.
+
+            Hidden technical fields in sheet: is_geriatrics, is_contractor, is_requestor (for modifiers).
         -->
         <record id="medical_partner_view_inherit" model="ir.ui.view">
             <field name="name">Partner_patient.form</field>
@@ -172,6 +191,45 @@
             <field name="inherit_id" ref="base.view_partner_form"/>
             <field name="priority" eval="50"/>
             <field name="arch" type="xml">
+                <xpath expr="//sheet" position="inside">
+                    <field name="is_geriatrics" invisible="1"/>
+                    <field name="is_contractor" invisible="1"/>
+                    <field name="is_requestor" invisible="1"/>
+                </xpath>
+                <xpath expr="//span[@name='address_name']" position="before">
+                    <!-- in base.view_partner_form: 
+                        <group>
+                            ...
+                            <span class="o_form_label" name="address_name"> <field name="type_address_label" ...../>
+                            </span>
+                            <div class="o_address_format">
+                                <field name="street" .../>
+                                <field name="street2" .../>
+                                <field name="city" .../> 
+                                ...
+                            <div>
+                        </group> 
+
+                        outer group has colspan="2" by default    
+                    --> 
+                    <group string="Gerijatrija" colspan="2" col="4">
+                        <label for="is_patient" string="Pacijent"/>
+                        <field name="is_patient" nolabel="1" widget="boolean_toggle"/>
+                        <label for="is_institution" string="Institucija"/>
+                        <field name="is_institution" nolabel="1" widget="boolean_toggle"/>
+                    </group>
+                </xpath>
+                <xpath expr="//span[@name='address_name']" position="before">
+                    <separator string="Adresa" colspan="2"/>
+                </xpath>
+                <xpath expr="//span[@name='address_name']" position="attributes">
+                    <attribute name="invisible">1</attribute>
+                </xpath>
+                <xpath expr="//span[@name='address_name']/following-sibling::div[hasclass('o_address_format')][1]" position="attributes">
+                    <attribute name="colspan">2</attribute>
+                </xpath>
+
+
                 <!--
                     Email (and phone below): why this xpath is long
                     ................................................
@@ -194,49 +252,93 @@
                     union (|) joins two locators; exactly one should match, so the module loads in both
                     cases and only the intended field gets readonly.
                 -->
-                <xpath expr="//div[contains(@class,'d-flex')][contains(@class,'align-items-baseline')][contains(@class,'w-md-50')][.//field[@name='email']]//field[@name='email'] | //div[contains(@class,'o_row_readonly')][.//field[@name='email']]//field[@name='email']" position="attributes">
-                    <attribute name="readonly">is_Patient</attribute>
+
+
+                <!-- Email / phone: narrow xpath so readonly applies only to the main header row (Odoo 19
+                     d-flex w-md-50 vs mail module o_row_readonly); avoids matching embedded contact emails. -->
+                
+                
+                
+                <xpath expr="//div[hasclass('d-flex', 'align-items-baseline', 'w-md-50')][.//field[@name='email']]//field[@name='email'] | //div[hasclass('o_row_readonly')][.//field[@name='email']]//field[@name='email']" position="attributes">
+                    <attribute name="readonly">is_patient</attribute>
                 </xpath>
-                <!-- Phone: same pattern as email (base w-md-50 row vs mail o_row_readonly). -->
-                <xpath expr="//div[contains(@class,'d-flex')][contains(@class,'align-items-baseline')][contains(@class,'w-md-50')][.//field[@name='phone']]//field[@name='phone'] | //div[contains(@class,'o_row_readonly')][.//field[@name='phone']]//field[@name='phone']" position="attributes">
-                    <attribute name="readonly">is_Patient</attribute>
+
+                <xpath expr="//div[hasclass('d-flex','align-items-baseline','w-md-50')][.//field[@name='phone']]//field[@name='phone'] | //div[hasclass('o_row_readonly')][.//field[@name='phone']]//field[@name='phone']" position="attributes">
+                    <attribute name="readonly">is_patient</attribute>
                 </xpath>
 
                 <xpath expr="//field[@name='company_type']" position="attributes">
-                    <attribute name="invisible">is_Patient</attribute>
+                    <attribute name="invisible">is_patient or is_institution or is_contractor or is_requestor</attribute>
                 </xpath>
                 <xpath expr="//field[@name='parent_id'][@widget='res_partner_many2one']" position="attributes">
-                    <attribute name="invisible">is_Patient</attribute>
-                </xpath>
-                <xpath expr="//div[@colspan='2'][contains(@class,'d-flex')][contains(@class,'gap-2')][.//field[@name='company_name']]" position="attributes">
-                    <attribute name="invisible">is_Patient</attribute>
+                    <attribute name="invisible">is_patient or is_institution or is_contractor or is_requestor</attribute>
                 </xpath>
 
-                <xpath expr="//field[@name='vat']" position="replace"/>
+                <xpath expr="//div[@colspan='2'][hasclass('d-flex','gap-2')][.//field[@name='company_name']]" position="attributes">
+                    <attribute name="invisible">is_patient or is_institution or is_contractor or is_requestor</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='vat']" position="attributes">
+                    <attribute name="invisible">is_geriatrics</attribute>
+                </xpath>
                 <xpath expr="//field[@name='function']" position="attributes">
                     <attribute name="readonly">1</attribute>
                 </xpath>
                 <xpath expr="//field[@name='website'][@widget='url']" position="attributes">
-                    <attribute name="readonly">1</attribute>
+                    <attribute name="readonly">is_geriatrics and not is_institution</attribute>
                 </xpath>
 
-                <!-- Tags (category_id) removed; patient toggle (+ contracts) replace that slot. -->
-                <xpath expr="//field[@name='category_id']" position="replace">
+                <xpath expr="//span[@name='address_name']/following-sibling::div[hasclass('o_address_format')]/field[@name='street2']" position="attributes">
+                    <attribute name="invisible">is_geriatrics</attribute>
+                </xpath>
 
+                <xpath expr="//span[@name='address_name']/following-sibling::div[hasclass('o_address_format')]/field[@name='state_id']" position="attributes">
+                    <attribute name="invisible">is_geriatrics</attribute>
+                </xpath>
+
+                <xpath expr="//div[@name='div_address']/field[@name='street2']" position="attributes">
+                    <attribute name="invisible">is_geriatrics</attribute>
+                </xpath>
+
+                <xpath expr="//div[@name='div_address']/field[@name='state_id']" position="attributes">
+                    <attribute name="invisible">is_geriatrics</attribute>
+                </xpath>
+
+                <xpath expr="//field[@name='category_id']" position="attributes">
+                    <attribute name="invisible">is_geriatrics</attribute>
                 </xpath>
 
                 <xpath expr="//group" position="after">
-                <group>
-                    <field name="is_Patient" widget="boolean_toggle"/>
-                    <field name="contract_ids" invisible="not is_Patient"/>
+                <group string="Ugovori" invisible="not is_geriatrics">
+                    <field name="contract_as_patient_ids" invisible="not is_patient" readonly="1">
+                        <list>
+                            <field name="contract_ref"/>
+                            <field name="requested_by"/>
+                            <field name="contractor"/>
+                            <field name="status"/>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                        </list>
+                    </field>
+                    <field name="contract_as_signatory_ids" invisible="not is_contractor and not is_requestor" readonly="1" string="Ugovori (podnosilac / potpisnik)">
+                        <list>
+                            <field name="contract_ref"/>
+                            <field name="patient"/>
+                            <field name="requested_by"/>
+                            <field name="contractor"/>
+                            <field name="status"/>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                        </list>
+                    </field>
                 </group>
                 </xpath>
 
                 <xpath expr="//page[@name='sales_purchases']" position="attributes">
-                    <attribute name="invisible">is_Patient</attribute>
+                    <attribute name="invisible">is_patient or is_institution</attribute>
                 </xpath>
                 <xpath expr="//page[@name='contact_addresses']" position="attributes" >
-                    <attribute name="invisible">is_Patient</attribute>
+                    <attribute name="invisible">is_patient or is_institution</attribute>
                 </xpath>
 
             </field>

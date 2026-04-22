@@ -13,30 +13,119 @@ def _give_last_birthday(dob, year):
 class res_partners(models.Model):
     _inherit = 'res.partner'
 
-    is_Patient = fields.Boolean(string='Is Patient', default=True)
-    contract_ids = fields.One2many(comodel_name='medical.patient.contract', inverse_name='patient_partner_id', string='Contracts')
+    # Partner form: user sets the toggle. Many2one quick-create passes context default_is_patient (see medical.patient.partner_id).
+    is_patient = fields.Boolean(string='Pacijent', default=False)
+    is_institution = fields.Boolean(string='Institucija', default=False)
 
-    # Deferred (nurse / insurance company): finish patient flow first, then uncomment and extend views.
-    # is_nurse = fields.Boolean(string='Is Nurse', default=False)
-    # is_insurance_company = fields.Boolean(string='Is Insurance Company', default=False)
-    #
-    # @api.onchange('is_Patient')
-    # def _onchange_is_patient_role(self):
-    #     if self.is_Patient:
-    #         self.is_nurse = False
-    #         self.is_insurance_company = False
-    #
-    # @api.onchange('is_nurse')
-    # def _onchange_is_nurse_role(self):
-    #     if self.is_nurse:
-    #         self.is_Patient = False
-    #         self.is_insurance_company = False
-    #
-    # @api.onchange('is_insurance_company')
-    # def _onchange_is_insurance_role(self):
-    #     if self.is_insurance_company:
-    #         self.is_Patient = False
-    #         self.is_nurse = False
+    # if partner is patient contract are shown on the form
+    medical_patient_ids = fields.One2many(
+        comodel_name='medical.patient',
+        inverse_name='partner_id',
+        string='Geriatrics patient records',
+    )
+    contract_as_patient_ids = fields.One2many(
+        comodel_name='medical.patient.contract',
+        inverse_name='patient_partner_id',
+        string='Ugovori (korisnik)',
+    )
+
+
+
+
+    # partner according to the contract model can be a contractor and/or a requestor
+    # contractor and requestor roles are derived here from medical.patient.contract roles (not set manually).
+    # for them contracts are shown on the partner form
+    contract_as_requestor_ids = fields.One2many(
+        comodel_name='medical.patient.contract',
+        inverse_name='requested_by',
+        string='Ugovori (podnosilac)',
+    )
+    contract_as_contractor_ids = fields.One2many(
+        comodel_name='medical.patient.contract',
+        inverse_name='contractor',
+        string='Ugovori (potpisnik)',
+    )
+    is_requestor = fields.Boolean(
+        string='Podnosilac (iz ugovora)',
+        compute='_compute_signatory_flags',
+        store=True,
+    )
+    is_contractor = fields.Boolean(
+        string='Potpisnik (iz ugovora)',
+        compute='_compute_signatory_flags',
+        store=True,
+    )
+
+    contract_as_signatory_ids = fields.Many2many(
+        comodel_name='medical.patient.contract',
+        compute='_compute_contract_as_signatory_ids',
+        string='Ugovori',
+    )
+
+    @api.depends('contract_as_contractor_ids', 'contract_as_requestor_ids')
+    def _compute_signatory_flags(self):
+        for partner in self:
+            partner.is_contractor = bool(partner.contract_as_contractor_ids)
+            partner.is_requestor = bool(partner.contract_as_requestor_ids)
+
+    @api.depends('contract_as_requestor_ids', 'contract_as_contractor_ids')
+    def _compute_contract_as_signatory_ids(self):
+        for partner in self:
+            partner.contract_as_signatory_ids = (
+                partner.contract_as_requestor_ids | partner.contract_as_contractor_ids
+            )
+
+    # special form layout if partner is in geriatric role
+    is_geriatrics = fields.Boolean(
+        string='Geriatrics element',
+        compute='_compute_is_geriatrics',
+    )
+
+    @api.depends(
+        'is_patient',
+        'is_institution',
+        'contract_as_contractor_ids',
+        'contract_as_requestor_ids',
+        'contract_as_patient_ids',
+    )
+    def _compute_is_geriatrics(self):
+        for partner in self:
+            partner.is_geriatrics = bool(
+                partner.is_patient
+                or partner.is_institution
+                or partner.contract_as_contractor_ids
+                or partner.contract_as_requestor_ids
+                or partner.contract_as_patient_ids
+            )
+
+
+    # default country = Bosnia and Herzegovina
+    @api.model
+    def default_get(self, fields_list):
+        values = super().default_get(fields_list)
+        if 'country_id' in fields_list and not values.get('country_id'):
+            ba = self.env['res.country'].search([('code', '=', 'BA')], limit=1)
+            if ba:
+                values['country_id'] = ba.id
+        return values
+
+    # user selects if partner is patient or institution (can choose one or none) 
+    @api.onchange('is_institution')
+    def _onchange_is_institution(self):
+        if self.is_institution:
+            self.is_patient = False
+
+    @api.onchange('is_patient')
+    def _onchange_is_patient(self):
+        if self.is_patient:
+            self.is_institution = False
+
+    @api.constrains('is_patient', 'is_institution')
+    def _check_patient_institution_exclusive(self):
+        for partner in self:
+            if partner.is_patient and partner.is_institution:
+                raise ValidationError(_('Kontakt ne može biti i pacijent i institucija.'))
+
 
 
 
@@ -66,6 +155,7 @@ class patient_contract(models.Model):
     status = fields.Selection([('draft','U pripremi'),('open', 'Aktivan'),('closed','Završen')], string='Status', default='draft')
     notes = fields.Text(string='Napomene')
     create_uid = fields.Many2one(comodel_name='res.users', string='Kreirao')
+    create_date = fields.Datetime(string='Kreirano', readonly=True)
 
     def action_activate_contract(self):
         self.filtered(lambda c: c.status == 'draft').write({'status': 'open'})
@@ -128,8 +218,8 @@ class patient(models.Model):
         comodel_name='res.partner',
         string='Patient',
         required=True,
-        domain=[('is_Patient', '=', True)],
-        oldname='name',
+        domain=[('is_patient', '=', True)],         # filters only partners that are patients
+        context={'default_is_patient': True},       # for a new created patient set is_patient=true
     )
     sex = fields.Selection([('m', 'Muški'), ('f', 'Ženski')], string='Pol', required=True)
     
