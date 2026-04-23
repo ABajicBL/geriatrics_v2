@@ -65,5 +65,13 @@
     </record>
 
     <menuitem id="menu_geriatrics_contracts" name="Contracts" parent="menu_geriatrics" action="action_geriatrics_contracts" sequence="20"/>
-    
+
+    <record id="action_medical_insurance" model="ir.actions.act_window">
+        <field name="name">Insurance</field>
+        <field name="res_model">medical.insurance</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <menuitem id="menu_medical_insurance" name="Insurance" parent="menu_geriatrics" action="action_medical_insurance" sequence="22"/>
+
 </odoo>

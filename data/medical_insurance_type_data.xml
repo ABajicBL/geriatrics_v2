@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="medical_insurance_type_penzioner" model="medical.insurance.type">
+            <field name="name">Penzioner</field>
+        </record>
+        <record id="medical_insurance_type_csr" model="medical.insurance.type">
+            <field name="name">Centar za socijalni rad</field>
+        </record>
+        <record id="medical_insurance_type_zavod" model="medical.insurance.type">
+            <field name="name">Preko zavoda za zaposljavanje</field>
+        </record>
+        <record id="medical_insurance_type_supruznik" model="medical.insurance.type">
+            <field name="name">Preko supruga</field>
+        </record>
+        <record id="medical_insurance_type_ir_l" model="medical.insurance.type">
+            <field name="name">Izbjegla i raseljena lica</field>
+        </record>
+        <record id="medical_insurance_type_dobrovoljno" model="medical.insurance.type">
+            <field name="name">Dobrovoljno</field>
+        </record>
+        <record id="medical_insurance_type_poljoprivredno" model="medical.insurance.type">
+            <field name="name">Poljoprivredno</field>
+        </record>
+        <record id="medical_insurance_type_poljoprivredno" model="medical.insurance.type">
+            <field name="name">Radni odnos</field>
+        </record>
+    </data>
+</odoo>

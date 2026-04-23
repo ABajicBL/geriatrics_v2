@@ -1,4 +1,5 @@
-from odoo import models, fields, api
+from odoo import models, fields, api, _
+from odoo.exceptions import UserError, ValidationError
 
 
 def _give_last_birthday(dob, year):
@@ -28,8 +29,6 @@ class res_partners(models.Model):
         inverse_name='patient_partner_id',
         string='Ugovori (korisnik)',
     )
-
-
 
 
     # partner according to the contract model can be a contractor and/or a requestor
@@ -201,7 +200,58 @@ class patient_contract(models.Model):
                     _('Već postoji aktivan ugovor gdje je ovaj kontakt potpisnik.')
                 )
 
+class medical_insurance_type(models.Model):
+    _name = 'medical.insurance.type'
+    _description = 'Insurance type (lookup)'
+    _order = 'name'
 
+    name = fields.Char(string='Naziv', required=True, translate=True)
+    active = fields.Boolean(default=True)
+
+class medical_insurance(models.Model):
+    _name = 'medical.insurance'
+    _description = 'Patient medical insurance'
+    _rec_name = 'insurance_number'
+    _order = 'create_date desc, id'
+
+    _sql_constraints = [
+        (
+            'medical_insurance_number_unique',
+            'unique(insurance_number)',
+            _('Broj zdravstvenog osiguranja mora biti jedinstven.'),
+        ),
+    ]
+
+    insurance_number = fields.Char(string='Broj zdr. osiguranja', required=True, index=True)
+    patient = fields.Many2one(
+        comodel_name='medical.patient',
+        string='Pacijent',
+        required=True,
+        ondelete='cascade',
+    )
+    patient_partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Kontakt pacijenta',
+        related='patient.partner_id',
+        store=True,
+        index=True,
+    )
+    insurance_provider = fields.Many2one(
+        comodel_name='res.partner',
+        string='Osiguranje obezbjeđuje',
+        required=True,
+        context={'default_is_institution': True},
+    )
+    insurance_type_id = fields.Many2one(
+        comodel_name='medical.insurance.type',
+        string='Tip osiguranja',
+    )
+    insurance_category = fields.Char(string='Kategorija')
+    member_since = fields.Date(string='Važi od')
+    member_exp = fields.Date(string='Ističe')
+    notes = fields.Text(string='Napomene')
+    create_uid = fields.Many2one(comodel_name='res.users', string='Kreirao', readonly=True)
+    create_date = fields.Datetime(string='Kreirano', readonly=True)
 
 
 class patient(models.Model):
@@ -338,6 +388,24 @@ class patient(models.Model):
     mother_name = fields.Char(string='Ime majke')
     mother_surname = fields.Char(string='Djev. prez. majke')
     husband_name = fields.Char(string='Ime muža / žene')
+
+    insurance_ids = fields.One2many(
+        comodel_name='medical.insurance',
+        inverse_name='patient',
+        string='Zdravstvena osiguranja',
+    )
+
+    def action_create_insurance(self):
+        self.ensure_one()    # block execution if self is not one record 
+        if not self.id:
+            raise UserError(_('Sačuvajte pacijenta prije dodavanja osiguranja.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'medical.insurance',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_patient': self.id},
+        }
 
     # address from res_partners
     # with related it is a proxy to the partner’s address
