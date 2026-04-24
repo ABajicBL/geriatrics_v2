@@ -74,4 +74,11 @@
 
     <menuitem id="menu_medical_insurance" name="Insurance" parent="menu_geriatrics" action="action_medical_insurance" sequence="22"/>
 
+    <record id="action_medical_hospitalization" model="ir.actions.act_window">
+        <field name="name">Hospitalization</field>
+        <field name="res_model">medical.hospitalization</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_medical_hospitalization" name="Hospitalization" parent="menu_geriatrics" action="action_medical_hospitalization" sequence="23"/>
+
 </odoo>

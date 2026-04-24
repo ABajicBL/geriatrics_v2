@@ -221,6 +221,121 @@
             </field>
         </record>
 
+        <!--- HOSPITALIZATION + lookup tables  -->
+        <record id="medical_hospitalization_view_list" model="ir.ui.view">
+            <field name="name">medical.hospitalization.list</field>
+            <field name="model">medical.hospitalization</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="hospitalization_code"/>
+                    <field name="hospitalized_patient"/>
+                    <field name="medical_hospital_unit_id"/>
+                    <field name="medical_hospital_subunit_id" optional="show"/>
+                    <field name="hospitalization_date"/>
+                    <field name="state" widget="badge" optional="show"/>
+                    <field name="discharge_date" />
+                    <field name="hospitalization_reason" optional="hide"/>
+                    <field name="info" optional="hide"/>
+                    <field name="discharge_reason"/>
+                    <field name="create_date" optional="show"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="medical_hospitalization_view_form" model="ir.ui.view">
+            <field name="name">medical.hospitalization.form</field>
+            <field name="model">medical.hospitalization</field>
+            <field name="arch" type="xml">
+                <form string="Hospitalizacija">
+                    <header>
+                        <button name="action_hospitalize_patient" type="object" string="Hospitalizuj pacijenta" class="btn-primary" invisible="state != 'free'"/>
+                        <button name="action_discharge_patient" type="object" string="Otpusti pacijenta" invisible="state != 'hospitalized'"/>
+                        <field name="state" widget="statusbar" statusbar_visible="free,hospitalized"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="hospitalization_code"/>
+                                <field name="hospitalized_patient" options="{'no_create': True, 'no_create_edit': True}"/>
+                                <field name="medical_hospital_unit_id"/>
+                                <field name="medical_hospital_subunit_id"/>
+                            </group>
+                            <group>
+                                <field name="hospitalization_date"/>
+                                <field name="hospitalization_reason"/>
+                                <field name="info" placeholder="Dodatne informacije..."/>
+                                <field name="create_uid" readonly="1"/>
+                                <field name="create_date" readonly="1"/>
+                            </group>
+                        </group>
+                        <group string="Otpust">
+                            <field name="discharge_date" readonly="state == 'free'"/>
+                            <field name="discharge_reason" readonly="state == 'free'"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Lookup models: no menu; form for Many2one Create & edit; list is Odoo default for search. -->
+        <record id="medical_hospitalization_unit_view_form" model="ir.ui.view">
+            <field name="name">medical.hospitalization.unit.form</field>
+            <field name="model">medical.hospitalization.unit</field>
+            <field name="arch" type="xml">
+                <form string="Smještajni objekat">
+                    <sheet>
+                        <group>
+                            <field name="unit"/>
+                            <field name="unit_description"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="medical_hospitalization_subunit_view_form" model="ir.ui.view">
+            <field name="name">medical.hospitalization.subunit.form</field>
+            <field name="model">medical.hospitalization.subunit</field>
+            <field name="arch" type="xml">
+                <form string="Odjel / soba">
+                    <sheet>
+                        <group>
+                            <field name="subunit"/>
+                            <field name="subunit_description"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="medical_hospitalization_admission_reason_view_form" model="ir.ui.view">
+            <field name="name">medical.hospitalization.admission.reason.form</field>
+            <field name="model">medical.hospitalization.admission.reason</field>
+            <field name="arch" type="xml">
+                <form string="Razlog prijema">
+                    <sheet>
+                        <group>
+                            <field name="reason"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="medical_hospitalization_discharge_reason_view_form" model="ir.ui.view">
+            <field name="name">medical.hospitalization.discharge.reason.form</field>
+            <field name="model">medical.hospitalization.discharge.reason</field>
+            <field name="arch" type="xml">
+                <form string="Razlog otpusta">
+                    <sheet>
+                        <group>
+                            <field name="reason"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
         <!--- RES PARTNER form  -->
         <!--
             medical_partner_view_inherit — geriatrics res.partner (patient, institution, contract roles).

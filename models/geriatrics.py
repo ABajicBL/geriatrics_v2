@@ -254,6 +254,137 @@ class medical_insurance(models.Model):
     create_date = fields.Datetime(string='Kreirano', readonly=True)
 
 
+class medical_hospitalization_unit(models.Model):
+    _name = 'medical.hospitalization.unit'
+    _description = 'Hospital unit'
+    _rec_name = 'unit'
+    _order = 'unit'
+
+    unit = fields.Char(string="Smještajni objekat", required=True)
+    unit_description = fields.Char(string="Opis")
+
+
+class medical_hospitalization_subunit(models.Model):
+    _name = 'medical.hospitalization.subunit'
+    _description = 'Hospital subunit / ward'
+    _rec_name = 'subunit'
+    _order = 'subunit'
+
+    subunit = fields.Char(string="Odjel/Soba", required=True)
+    subunit_description = fields.Char(string="Opis")
+
+
+class medical_hospitalization_admission_reason(models.Model):
+    _name = 'medical.hospitalization.admission.reason'
+    _description = 'Reason for admission / hospitalization'
+    _rec_name = 'reason'
+    _order = 'reason'
+
+    reason = fields.Char(string="Razlog prijema", required=True)
+
+
+class medical_hospitalization_discharge_reason(models.Model):
+    _name = 'medical.hospitalization.discharge.reason'
+    _description = 'Reason for discharge from hospitalization'
+    _rec_name = 'reason'
+    _order = 'reason'
+
+    reason = fields.Char(string="Razlog otpusta", required=True)
+
+
+class medical_hospitalization(models.Model):
+    _name = 'medical.hospitalization'
+    _description = 'Hospital admission records for patients'
+    _rec_name = 'hospitalization_code'
+    _order = 'hospitalization_date desc, id'
+
+    def _default_hospitalization_code(self):
+        return self.env['ir.sequence'].next_by_code('medical.hospitalization.code')
+
+    hospitalization_code = fields.Char(
+        string="Registarski kod",
+        required=True,
+        index=True,
+        default=_default_hospitalization_code,
+    )
+
+    state = fields.Selection(
+        [('free', 'Slobodno'), ('hospitalized', 'Hospitalizovan')],
+        string='Stanje',
+        default='free',
+        required=True,
+        index=True,
+    )
+
+    hospitalized_patient = fields.Many2one(
+        comodel_name='medical.patient',
+        string='Pacijent',
+        required=True,
+    )
+    medical_hospital_unit_id = fields.Many2one(
+        comodel_name='medical.hospitalization.unit',
+        string='Smještaj',
+        required=True,
+    )
+    medical_hospital_subunit_id = fields.Many2one(
+        comodel_name='medical.hospitalization.subunit',
+        string='Odjel/Soba',
+    )
+
+    hospitalization_reason = fields.Many2one(
+        comodel_name='medical.hospitalization.admission.reason',
+        string='Razlog prijema/hospitalizacije',
+    )
+    info = fields.Text(string='Info')
+
+    hospitalization_date = fields.Date(string="Datum prijema", required=True)
+
+    discharge_date = fields.Date(string="Datum otpusta")
+
+    discharge_reason = fields.Many2one(
+        comodel_name='medical.hospitalization.discharge.reason',
+        string='Razlog otpusta',
+    )
+
+    create_uid = fields.Many2one(comodel_name='res.users', string='Kreirao', readonly=True)
+    create_date = fields.Datetime(string='Kreirano', readonly=True)
+
+    def action_hospitalize_patient(self):
+        self.ensure_one()
+        if self.state == 'free':
+            self.state = 'hospitalized'
+        return True
+
+    def action_discharge_patient(self):
+        self.ensure_one()
+        if self.state != 'hospitalized':
+            return True
+        if not self.discharge_date or not self.discharge_reason:
+            raise ValidationError(
+                _('Datum otpusta i razlog otpusta moraju biti uneseni prije otpusta.')
+            )
+        self.state = 'free'
+        return True
+
+    # only one active hospitalisation is allowed (state=hospitalized)
+    @api.constrains('hospitalized_patient', 'state')
+    def _check_one_hospitalized_per_patient(self):
+        for hosp in self:
+            if not hosp.hospitalized_patient:
+                continue
+            dup = self.search_count(
+                [
+                    ('id', '!=', hosp.id),
+                    ('hospitalized_patient', '=', hosp.hospitalized_patient.id),
+                    ('state', '=', 'hospitalized'),
+                ]
+            )
+            if dup:
+                raise ValidationError(
+                    _('Pacijent može imati samo jednu registraciju ako je već hospitalizovan.')
+                )
+
+
 class patient(models.Model):
     _name = 'medical.patient'
     _description = 'Patient'
