@@ -81,4 +81,11 @@
     </record>
     <menuitem id="menu_medical_hospitalization" name="Hospitalization" parent="menu_geriatrics" action="action_medical_hospitalization" sequence="23"/>
 
+    <record id="action_medical_patient_tracking_list" model="ir.actions.act_window">
+        <field name="name">Tracking List</field>
+        <field name="res_model">medical.patient.tracking.list</field>
+        <field name="view_mode">list,form</field>
+    </record>
+    <menuitem id="menu_medical_patient_tracking_list" name="Patient Tracking" parent="menu_geriatrics" action="action_medical_patient_tracking_list" sequence="24"/>
+
 </odoo>

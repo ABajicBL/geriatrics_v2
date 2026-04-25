@@ -366,7 +366,7 @@ class medical_hospitalization(models.Model):
         self.state = 'free'
         return True
 
-    # only one active hospitalisation is allowed (state=hospitalized)
+    # only one active hospitalization is allowed (state=hospitalized)
     @api.constrains('hospitalized_patient', 'state')
     def _check_one_hospitalized_per_patient(self):
         for hosp in self:
@@ -383,6 +383,46 @@ class medical_hospitalization(models.Model):
                 raise ValidationError(
                     _('Pacijent može imati samo jednu registraciju ako je već hospitalizovan.')
                 )
+
+
+#class patient_tracking_list(models.Model):
+#    _name = 'medical.patient.tracking.list'
+#    _rec_name = 'name'
+#    _order = 'date desc'
+#    
+#    name = fields.Char('Name')
+#    date = fields.Date('Date', required=True)
+#    patient_id = fields.Many2one('medical.patient', string='Patient', required=True)
+#    info = fields.Text('Activities made')
+#    create_uid = fields.Many2one('res.users', string='Created By')
+
+
+class medical_patient_tracking_list(models.Model):
+    _name = 'medical.patient.tracking.list'
+    _description = 'Tracking information for patient - its activity and health update'
+    _order = 'date desc, patient_id'
+
+    date = fields.Date(string='Datum', required=True)
+    patient_id = fields.Many2one(
+        comodel_name='medical.patient',
+        string='Pacijent',
+        required=True,
+    )
+    info = fields.Text(string="Informacije")
+    create_uid = fields.Many2one(
+        comodel_name='res.users', 
+        string='Kreirao', 
+        readonly=True
+    )
+
+    def name_get(self):
+        result = []
+        for record in self:
+            date = fields.Date.to_string(record.date) if record.date else ''
+            name = f"{record.patient_id.display_name} {date}".strip()
+            result.append((record.id, name))
+        return result
+
 
 
 class patient(models.Model):
@@ -525,6 +565,21 @@ class patient(models.Model):
         inverse_name='patient',
         string='Zdravstvena osiguranja',
     )
+
+    recent_tracking_list_ids = fields.Many2many(
+        comodel_name='medical.patient.tracking.list',
+        compute='_compute_recent_tracking_list_ids',
+        string='Zadnjih 15 praćenja',
+    )
+
+    def _compute_recent_tracking_list_ids(self):
+        tracking = self.env['medical.patient.tracking.list']
+        for patient in self:
+            patient.recent_tracking_list_ids = tracking.search(
+                [('patient_id', '=', patient.id)],
+                order='date desc, id desc',
+                limit=15,
+            )
 
     def action_create_insurance(self):
         self.ensure_one()    # block execution if self is not one record 

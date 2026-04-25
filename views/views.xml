@@ -50,6 +50,15 @@
                         </group>
 
                         <notebook>
+                            <page string="Praćenje" name="tracking_list">
+                                <field name="recent_tracking_list_ids" nolabel="1" readonly="1">
+                                    <list create="0" edit="0" delete="0">
+                                        <field name="date"/>
+                                        <field name="info"/>
+                                        <field name="create_uid" optional="show"/>
+                                    </list>
+                                </field>
+                            </page>
                             <page string="Zdr. osiguranje" name="insurances">
                                 <button name="action_create_insurance" type="object" string="Novo osiguranje" class="btn-secondary mb-2" invisible="not id"/>
                                 <field name="insurance_ids" nolabel="1" readonly="1" colspan="2">
@@ -330,6 +339,43 @@
                     <sheet>
                         <group>
                             <field name="reason"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!--- PATIENT TRACKING  -->
+        <record id="medical_patient_tracking_list_view_list" model="ir.ui.view">
+            <field name="name">medical.patient.tracking.list.list</field>
+            <field name="model">medical.patient.tracking.list</field>
+            <field name="arch" type="xml">
+                <list>
+                    <field name="date"/>
+                    <field name="patient_id"/>
+                    <field name="info"/>
+                    <field name="create_uid"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="medical_patient_tracking_list_view_form" model="ir.ui.view">
+            <field name="name">medical.patient.tracking.list.form</field>
+            <field name="model">medical.patient.tracking.list</field>
+            <field name="arch" type="xml">
+                <form string="Praćenje pacijenta">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="date"/>
+                                <field name="patient_id" options="{'no_create': True, 'no_create_edit': True}"/>
+                            </group>
+                            <group>
+                                <field name="create_uid" readonly="1"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="info" placeholder="Informacije..."/>
                         </group>
                     </sheet>
                 </form>
