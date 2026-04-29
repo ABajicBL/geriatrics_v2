@@ -20,6 +20,22 @@
     margin-top: 2rem;
 }
 
+.o_geriatrics_patient_deceased_group {
+    margin-bottom: 0.75rem;
+}
+
+.o_deceased_false {
+    opacity: 0.2;
+}
+
+.o_deceased_true {
+    opacity: 1;
+}
+
+.o_geriatrics_patient_address_spacer {
+    min-height: 1.5rem;
+}
+
 .o_geriatrics_patient_header {
     display: flex;
     align-items: flex-start;

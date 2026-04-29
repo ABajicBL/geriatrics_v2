@@ -3,7 +3,7 @@
     "description": """
                     Hospital management system for Geriatrics clinics BL
                     """,
-    "version": "0.55",
+    "version": "0.65",
     "author": "Komiti / plusPMO",
     "category": "Medical",
     "depends": [

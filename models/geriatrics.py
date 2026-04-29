@@ -214,13 +214,10 @@ class medical_insurance(models.Model):
     _rec_name = 'insurance_number'
     _order = 'create_date desc, id'
 
-    _sql_constraints = [
-        (
-            'medical_insurance_number_unique',
-            'unique(insurance_number)',
-            _('Broj zdravstvenog osiguranja mora biti jedinstven.'),
-        ),
-    ]
+    _insurance_number_unique = models.Constraint(
+        'UNIQUE(insurance_number)',
+        _('Broj zdravstvenog osiguranja mora biti jedinstven.'),
+    )
 
     insurance_number = fields.Char(string='Broj zdr. osiguranja', required=True, index=True)
     patient = fields.Many2one(
@@ -298,6 +295,11 @@ class medical_hospitalization(models.Model):
     _rec_name = 'hospitalization_code'
     _order = 'hospitalization_date desc, id'
 
+    _hospitalization_code_unique = models.Constraint(
+        'UNIQUE(hospitalization_code)',
+        _('Registarski kod hospitalizacije mora biti jedinstven.'),
+    )
+
     def _default_hospitalization_code(self):
         return self.env['ir.sequence'].next_by_code('medical.hospitalization.code')
 
@@ -354,6 +356,8 @@ class medical_hospitalization(models.Model):
         if self.state == 'free':
             self.state = 'hospitalized'
         return True
+        # note: no need to call create() or write() if user clicks on unsaved form, 
+        #       for object button on a form Odoo always firs save and ten call method
 
     def action_discharge_patient(self):
         self.ensure_one()
@@ -364,6 +368,27 @@ class medical_hospitalization(models.Model):
                 _('Datum otpusta i razlog otpusta moraju biti uneseni prije otpusta.')
             )
         self.state = 'free'
+        return True
+
+    def action_discharge_patient_death(self):
+        self.ensure_one()
+        if self.state != 'hospitalized':
+            return True
+
+        self.action_discharge_patient()
+
+        patient = self.hospitalized_patient
+        patient.write({
+            'deceased': True,
+            'dod': self.discharge_date,
+        })
+
+        patient.patient_contracts_ids.filtered(
+            lambda contract: contract.status == 'open'
+        ).write({
+            'status': 'closed',
+            'end_date': self.discharge_date,
+        })
         return True
 
     # only one active hospitalization is allowed (state=hospitalized)
@@ -385,18 +410,6 @@ class medical_hospitalization(models.Model):
                 )
 
 
-#class patient_tracking_list(models.Model):
-#    _name = 'medical.patient.tracking.list'
-#    _rec_name = 'name'
-#    _order = 'date desc'
-#    
-#    name = fields.Char('Name')
-#    date = fields.Date('Date', required=True)
-#    patient_id = fields.Many2one('medical.patient', string='Patient', required=True)
-#    info = fields.Text('Activities made')
-#    create_uid = fields.Many2one('res.users', string='Created By')
-
-
 class medical_patient_tracking_list(models.Model):
     _name = 'medical.patient.tracking.list'
     _description = 'Tracking information for patient - its activity and health update'
@@ -415,13 +428,11 @@ class medical_patient_tracking_list(models.Model):
         readonly=True
     )
 
-    def name_get(self):
-        result = []
+    @api.depends('patient_id', 'date')
+    def _compute_display_name(self):
         for record in self:
-            date = fields.Date.to_string(record.date) if record.date else ''
-            name = f"{record.patient_id.display_name} {date}".strip()
-            result.append((record.id, name))
-        return result
+            date = record.date.strftime('%d.%m.%Y') if record.date else ''
+            record.display_name = f"{record.patient_id.display_name} {date}".strip()
 
 
 
@@ -498,7 +509,7 @@ class patient(models.Model):
             return
 
     # deceased
-    deceased = fields.Boolean(string='Preminuo', default=False)
+    deceased = fields.Boolean(string='Preminuo(la)', default=False)
 
     # death date
     dod = fields.Date(string='Datum smrti')
@@ -566,6 +577,120 @@ class patient(models.Model):
         string='Zdravstvena osiguranja',
     )
 
+    patient_hospitalization_ids = fields.One2many(
+        comodel_name='medical.hospitalization',
+        inverse_name='hospitalized_patient',
+        string='Hospitalizacije',
+    )
+
+    actual_hospitalization = fields.Many2one(
+        comodel_name='medical.hospitalization', 
+        compute='_calculate_actual_hospitalization',
+        string='Trenutna hospitalizacija',
+    )
+
+    hospitalized = fields.Char(
+        string='Hospitalizovan(a)',
+        compute='_calculate_hospitalized',
+        readonly=True,
+    )
+
+    hospitalized_since = fields.Date(
+        string='Smješten(a) od',
+        compute='_calculate_hospitalized_fields',
+        readonly=True,
+    )
+
+    hospitalized_unit = fields.Many2one(
+        comodel_name='medical.hospitalization.unit',
+        string='Smještaj',
+        compute='_calculate_hospitalized_fields',
+        readonly=True,
+    )
+
+    @api.depends('patient_hospitalization_ids.state', 'patient_hospitalization_ids.hospitalization_date')
+    def _calculate_actual_hospitalization(self):
+        for patient in self:
+            actual_hospitalization = patient.patient_hospitalization_ids.filtered(
+                lambda h: h.state == 'hospitalized'
+            ).sorted(key=lambda h: (h.hospitalization_date, h.id), reverse=True)
+            patient.actual_hospitalization = actual_hospitalization[:1]
+
+    @api.depends('actual_hospitalization')
+    def _calculate_hospitalized(self):
+        for patient in self:
+            patient.hospitalized = 'Da' if patient.actual_hospitalization else 'Ne'
+                
+    @api.depends(
+        'actual_hospitalization',
+        'actual_hospitalization.hospitalization_date',
+        'actual_hospitalization.medical_hospital_unit_id',
+    )
+    def _calculate_hospitalized_fields(self):
+        for patient in self:
+            patient.hospitalized_since = patient.actual_hospitalization.hospitalization_date
+            patient.hospitalized_unit = patient.actual_hospitalization.medical_hospital_unit_id
+
+    #contracts
+    patient_contracts_ids = fields.One2many(
+        comodel_name='medical.patient.contract',
+        inverse_name='patient',
+        string='Ugovor',
+    )
+
+    actual_contract = fields.Many2one(
+        comodel_name='medical.patient.contract',
+        compute='_calculate_actual_contract',
+        string='Trenutni ugovor',
+    )
+
+    actual_contractor = fields.Many2one(
+        comodel_name='res.partner',
+        compute='_calculate_actual_contract_fields',
+        string='Potpisnik ugovora',
+        readonly=True,
+    )
+
+    actual_contract_state = fields.Selection(
+        [('draft','U pripremi'),('open', 'Aktivan'),('closed','Završen')],
+        compute='_calculate_actual_contract_fields',
+        string='Status ugovora',
+        readonly=True,
+    )
+
+    contract_exist = fields.Boolean(
+        string='Ugovor',
+        compute='_calculate_contract_exist',
+        readonly=True,
+    )
+
+    @api.depends('patient_contracts_ids.status', 'patient_contracts_ids.start_date')
+    def _calculate_actual_contract(self):
+        for patient in self:
+            open_contract = patient.patient_contracts_ids.filtered(lambda c: c.status == 'open')[:1]
+            if open_contract:
+                patient.actual_contract = open_contract
+                continue
+
+            draft_contracts = patient.patient_contracts_ids.filtered(lambda c: c.status == 'draft')
+            patient.actual_contract = draft_contracts.sorted(
+                key=lambda c: (c.start_date, c.id),
+                reverse=True,
+            )[:1]
+
+    @api.depends('actual_contract', 'actual_contract.contractor', 'actual_contract.status')
+    def _calculate_actual_contract_fields(self):
+        for patient in self:
+            patient.actual_contractor = patient.actual_contract.contractor
+            patient.actual_contract_state = patient.actual_contract.status
+
+    @api.depends('actual_contract')
+    def _calculate_contract_exist(self):
+        for patient in self:
+            patient.contract_exist = bool(patient.actual_contract)
+
+
+    # Computed preview of the latest 15 tracking records; ownership remains tracking.patient_id.
     recent_tracking_list_ids = fields.Many2many(
         comodel_name='medical.patient.tracking.list',
         compute='_compute_recent_tracking_list_ids',
@@ -591,6 +716,19 @@ class patient(models.Model):
             'view_mode': 'form',
             'target': 'new',
             'context': {'default_patient': self.id},
+        }
+
+    # action for button in patient tracking page (in notebook)
+    def action_create_tracking_list(self):
+        self.ensure_one()
+        if not self.id:
+            raise UserError(_('Sačuvajte pacijenta prije dodavanja praćenja.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'res_model': 'medical.patient.tracking.list',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_patient_id': self.id},
         }
 
     # address from res_partners
